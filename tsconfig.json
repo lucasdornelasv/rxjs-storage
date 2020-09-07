@@ -1,0 +1,21 @@
+{
+    "compileOnSave": false,
+    "compilerOptions": {
+        "baseUrl": "./",
+        "outDir": "./dist",
+        "sourceMap": true,
+        "declaration": true,
+        "strict": true,
+        "module": "CommonJS",
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "importHelpers": true,
+        "downlevelIteration": true,
+        "noImplicitAny": false,
+        "target": "ES2016",
+        "typeRoots": ["node_modules/@types"],
+        "lib": ["ESNext", "dom"]
+    },
+    "include": ["src/**/*"],
+    "exclude": ["src/**/*.spec.*"]
+}
