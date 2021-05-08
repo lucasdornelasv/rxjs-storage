@@ -1,30 +1,19 @@
-import { subscribeOn } from 'rxjs/operators';
-import { TestScheduler } from 'rxjs/testing';
+import { LocalStorageService } from '../src/local';
 
-const testScheduler = new TestScheduler((actual, expected) => {
-  // asserting the two objects are equal
-  // e.g. using chai.
-  expect(actual).toBe(expected);
-});
+const StorageService = LocalStorageService;
 
-import { MemoryStorageService } from '../src/memory';
-
-describe('Memory Storage Service', () => {
+describe('Local Storage Service', () => {
   test('Should Create Instance', () => {
-    expect(globalThis.memoryStorage).toBeUndefined();
+    const storageService = new StorageService();
 
-    const storageService = new MemoryStorageService();
-
-    expect(storageService).toBeInstanceOf(MemoryStorageService);
+    expect(storageService).toBeInstanceOf(StorageService);
     expect(storageService.keys().length).toEqual(0);
     expect(storageService.items().length).toEqual(0);
     expect(storageService.entries().length).toEqual(0);
-
-    expect(globalThis.memoryStorage).toBeDefined();
   });
 
   test('Should changed keys count', () => {
-    const storageService = new MemoryStorageService('keys');
+    const storageService = new StorageService('keys');
     expect(storageService.keys().length).toEqual(0);
 
     storageService.setItem('test', 'test');
@@ -38,7 +27,7 @@ describe('Memory Storage Service', () => {
   });
 
   test('Should changed items count', () => {
-    const storageService = new MemoryStorageService('items');
+    const storageService = new StorageService('items');
     expect(storageService.items().length).toEqual(0);
 
     storageService.setItem('test', 'test');
@@ -52,7 +41,7 @@ describe('Memory Storage Service', () => {
   });
 
   test('Should changed entries count', () => {
-    const storageService = new MemoryStorageService('entries');
+    const storageService = new StorageService('entries');
     expect(storageService.entries().length).toEqual(0);
 
     storageService.setItem('test', 'test');
@@ -66,7 +55,7 @@ describe('Memory Storage Service', () => {
   });
 
   test('Should changed entriesSnapshot count', () => {
-    const storageService = new MemoryStorageService('entriesSnapshot');
+    const storageService = new StorageService('entriesSnapshot');
     expect(storageService.entriesSnapshot().length).toEqual(0);
 
     storageService.setItem('test', 'test');
@@ -80,7 +69,7 @@ describe('Memory Storage Service', () => {
   });
 
   test('Should inserted keys', () => {
-    const storageService = new MemoryStorageService('inserted keys');
+    const storageService = new StorageService('inserted keys');
 
     for (let i = 0; i < 3; ++i) {
       const key = 'test' + i;
@@ -92,7 +81,7 @@ describe('Memory Storage Service', () => {
   });
 
   test('Should inserted items', () => {
-    const storageService = new MemoryStorageService('inserted items');
+    const storageService = new StorageService('inserted items');
 
     for (let i = 0; i < 3; ++i) {
       const key = 'test' + i;

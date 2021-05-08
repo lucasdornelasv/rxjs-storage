@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "dist/esm5",
+    "module": "ESNext",
+    "target": "es5",
+    "tsBuildInfoFile": "node_modules/.cache/.tsbuildinfo.esm"
+  }
+}
