@@ -1,21 +1,33 @@
 {
-    "compileOnSave": false,
-    "compilerOptions": {
-        "baseUrl": "./",
-        "outDir": "./dist",
-        "sourceMap": true,
-        "declaration": true,
-        "strict": true,
-        "module": "CommonJS",
-        "emitDecoratorMetadata": true,
-        "experimentalDecorators": true,
-        "importHelpers": true,
-        "downlevelIteration": true,
-        "noImplicitAny": false,
-        "target": "ES2016",
-        "typeRoots": ["node_modules/@types"],
-        "lib": ["ESNext", "dom"]
-    },
-    "include": ["src/**/*"],
-    "exclude": ["src/**/*.spec.*"]
+  "compileOnSave": false,
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "outDir": "./dist",
+    "strictBindCallApply": false,
+    "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "sourceMap": true,
+    "declaration": true,
+    "strict": true,
+    "module": "UMD",
+    "moduleResolution": "Node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "downlevelIteration": true,
+    "noImplicitAny": false,
+    "preserveConstEnums": true,
+    "importsNotUsedAsValues": "remove",
+    "target": "ESNext",
+    "typeRoots": ["node_modules/@types"],
+    "lib": ["ESNext", "dom"],
+    "paths": {
+      "rxjs-storage": ["./src/index"],
+      "rxjs-storage/local": ["./src/local/index"],
+      "rxjs-storage/memory": ["./src/memory/index"],
+      "rxjs-storage/session": ["./src/session/index"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.spec.*"]
 }
