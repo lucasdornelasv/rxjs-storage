@@ -1,6 +1,6 @@
 {
   "name": "@rxjs-storage/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/lucasdornelasv/rxjs-storage"
@@ -38,7 +38,7 @@
     "build:umd": "tsc --project tsconfig.umd.json",
     "test": "jest",
     "clean": "rimraf dist && rimraf node_modules/.cache",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm login --access=public --scope=@rxjs-storage && npm run build"
   },
   "devDependencies": {
     "@homer0/prettier-plugin-jsdoc": "^3.0.1",
