@@ -1,6 +1,6 @@
 {
   "name": "@rxjs-storage/core",
-  "version": "0.0.0-dripip",
+  "version": "0.1.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/lucasdornelasv/rxjs-storage"
@@ -10,6 +10,7 @@
   "files": [
     "dist",
     "dist/esm",
+    "dist/umd",
     "dist/types"
   ],
   "exports": {
@@ -19,7 +20,7 @@
     }
   },
   "main": "dist/cjs/index.js",
-  "module": "./dist/esm5/index.js",
+  "module": "./dist/esm/index.js",
   "es2015": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
   "scripts": {
@@ -30,16 +31,13 @@
     "lint": "eslint . --ext .ts,.tsx --fix",
     "lint:check": "eslint . --ext .ts,.tsx --max-warnings 0",
     "dev": "npm run clean && tsc --build --watch",
-    "build": "npm run clean && npm run build:cjs && npm run build:esm && npm run build:esm5 && npm run build:types",
+    "build": "npm run clean && npm run build:cjs && npm run build:esm && npm run build:umd && npm run build:types",
     "build:types": "tsc --project tsconfig.types.json",
     "build:cjs": "tsc --project tsconfig.cjs.json",
     "build:esm": "tsc --project tsconfig.esm.json",
-    "build:esm5": "tsc --project tsconfig.esm5.json",
+    "build:umd": "tsc --project tsconfig.umd.json",
     "test": "jest",
     "clean": "rimraf dist && rimraf node_modules/.cache",
-    "release:pr": "dripip pr",
-    "release:canary": "dripip preview",
-    "release:stable": "dripip stable",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
@@ -48,7 +46,6 @@
     "@types/jest": "26.0.22",
     "@typescript-eslint/eslint-plugin": "^4.21.0",
     "@typescript-eslint/parser": "^4.21.0",
-    "dripip": "0.10.0",
     "eslint": "^7.23.0",
     "eslint-config-prettier": "^8.1.0",
     "eslint-plugin-only-warn": "^1.0.2",

@@ -17,16 +17,23 @@
     "moduleResolution": "Node",
     "importHelpers": true,
     "sourceMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "preserveConstEnums": true,
     "downlevelIteration": true,
     "noImplicitAny": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "removeComments": true,
+    "esModuleInterop": true,
 
     // Project layout
     "rootDir": "src",
     "typeRoots": ["node_modules/@types"],
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
 
     // DX
     "incremental": true,
