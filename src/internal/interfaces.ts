@@ -21,7 +21,7 @@ export interface IEntryChange {
 
 export type FilterType = (key: string) => boolean;
 
-export interface IStorageService {
+export interface IRxStorage {
   onItemChanged(keyOrKeys?: string | string[]): Observable<IEntryChange>;
   onItemRemoved(keyOrKeys?: string | string[]): Observable<IEntrySnapshot>;
   hasItem(key: string): boolean;

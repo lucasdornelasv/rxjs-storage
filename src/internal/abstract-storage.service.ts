@@ -1,6 +1,6 @@
 import {
   IEntry,
-  IStorageService,
+  IRxStorage,
   IEntryChange,
   FilterType,
   IEntrySnapshot,
@@ -9,7 +9,7 @@ import { Subject, Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
 export class Entry implements IEntry {
-  constructor(public key: string, private storage: IStorageService) {}
+  constructor(public key: string, private storage: IRxStorage) {}
 
   get item() {
     return this.storage.getItem(this.key);
@@ -32,7 +32,7 @@ export class EntrySnapshot implements IEntrySnapshot {
   constructor(public key: string, public item: any, public exists: boolean) {}
 }
 
-export abstract class AbstractStorageService implements IStorageService {
+export abstract class RxAbstractStorage implements IRxStorage {
   private entryChangeSubject: Subject<IEntryChange>;
   private entryRemovedSubject: Subject<IEntrySnapshot>;
 

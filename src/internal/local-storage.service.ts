@@ -1,6 +1,6 @@
-import { AbstractStorageService } from './abstract-storage.service';
+import { RxAbstractStorage } from './abstract-storage.service';
 
-export class LocalStorageService extends AbstractStorageService {
+export class RxLocalStorage extends RxAbstractStorage {
   constructor(prefix?: string) {
     super(localStorage, prefix);
   }

@@ -1,6 +1,6 @@
-import { AbstractStorageService } from './abstract-storage.service';
+import { RxAbstractStorage } from './abstract-storage.service';
 
-export class SessionStorageService extends AbstractStorageService {
+export class RxSessionStorage extends RxAbstractStorage {
   constructor(prefix?: string) {
     super(sessionStorage, prefix);
   }

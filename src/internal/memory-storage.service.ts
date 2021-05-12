@@ -1,4 +1,4 @@
-import { AbstractStorageService } from './abstract-storage.service';
+import { RxAbstractStorage } from './abstract-storage.service';
 
 class MemoryStorage implements Storage {
   [name: string]: any;
@@ -36,7 +36,7 @@ class MemoryStorage implements Storage {
   }
 }
 
-export class MemoryStorageService extends AbstractStorageService {
+export class RxMemoryStorage extends RxAbstractStorage {
   constructor(prefix?: string) {
     super(
       (() => {
