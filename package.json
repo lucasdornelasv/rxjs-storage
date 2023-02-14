@@ -1,6 +1,6 @@
 {
   "name": "@rxjs-storage/core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/lucasdornelasv/rxjs-storage"
@@ -44,6 +44,7 @@
     "@homer0/prettier-plugin-jsdoc": "^3.0.1",
     "@prisma-labs/prettier-config": "0.1.0",
     "@types/jest": "26.0.22",
+    "@types/node": "^18.13.0",
     "@typescript-eslint/eslint-plugin": "^4.21.0",
     "@typescript-eslint/parser": "^4.21.0",
     "eslint": "^7.23.0",
@@ -55,8 +56,8 @@
     "prettier": "2.2.1",
     "rimraf": "^3.0.2",
     "ts-jest": "26.5.4",
-    "ts-node": "^9.1.1",
-    "typescript": "4.2.4",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.5",
     "typescript-snapshots-plugin": "^1.7.0"
   },
   "prettier": "@prisma-labs/prettier-config",
@@ -64,7 +65,7 @@
     "emptyLinesBetweenGroups": false
   },
   "dependencies": {
-    "rxjs": "^7.0.0",
-    "tslib": "^2.2.0"
+    "rxjs": "^7.8.0",
+    "tslib": "^2.5.0"
   }
 }
