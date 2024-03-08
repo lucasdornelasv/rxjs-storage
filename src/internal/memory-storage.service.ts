@@ -1,38 +1,33 @@
-import { RxAbstractStorage } from './abstract-storage.service';
+import { RxAbstractStorage } from './abstract-storage.service'
 
 class MemoryStorage implements Storage {
-  [name: string]: any;
-
-  private _length = 0;
+  [name: string]: any
 
   get length() {
-    return this._length;
+    return Object.keys(this).length
   }
 
   clear(): void {
-    const keys = Object.keys(this);
+    const keys = Object.keys(this)
     keys.forEach((key) => {
-      delete this[key];
-    });
-    this._length = 0;
+      delete this[key]
+    })
   }
 
   getItem(key: string): string {
-    return this[key];
+    return this[key]
   }
 
   key(index: number): string {
-    return Object.keys(this)[index];
+    return Object.keys(this)[index]
   }
 
   removeItem(key: string): void {
-    delete this[key];
-    --this._length;
+    delete this[key]
   }
 
   setItem(key: string, value: string): void {
-    this[key] = value;
-    ++this._length;
+    this[key] = value
   }
 }
 
@@ -41,12 +36,12 @@ export class RxMemoryStorage extends RxAbstractStorage {
     super(
       (() => {
         if (!globalThis.memoryStorage) {
-          globalThis.memoryStorage = new MemoryStorage();
+          globalThis.memoryStorage = new MemoryStorage()
         }
 
-        return globalThis.memoryStorage;
+        return globalThis.memoryStorage
       })(),
       prefix
-    );
+    )
   }
 }

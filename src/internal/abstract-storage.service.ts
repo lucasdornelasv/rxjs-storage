@@ -1,30 +1,24 @@
-import {
-  IEntry,
-  IRxStorage,
-  IEntryChange,
-  FilterType,
-  IEntrySnapshot,
-} from './interfaces';
-import { Subject, Observable } from 'rxjs';
-import { filter } from 'rxjs/operators';
+import { IEntry, IRxStorage, IEntryChange, FilterType, IEntrySnapshot } from './interfaces'
+import { Subject, Observable } from 'rxjs'
+import { filter } from 'rxjs/operators'
 
 export class Entry implements IEntry {
   constructor(public key: string, private storage: IRxStorage) {}
 
   get item() {
-    return this.storage.getItem(this.key);
+    return this.storage.getItem(this.key)
   }
 
   set item(value: any) {
-    this.storage.setItem(this.key, value);
+    this.storage.setItem(this.key, value)
   }
 
   get exists() {
-    return this.storage.hasItem(this.key);
+    return this.storage.hasItem(this.key)
   }
 
   remove(): void {
-    this.storage.removeItem(this.key);
+    this.storage.removeItem(this.key)
   }
 }
 
@@ -33,173 +27,216 @@ export class EntrySnapshot implements IEntrySnapshot {
 }
 
 export abstract class RxAbstractStorage implements IRxStorage {
-  private entryChangeSubject: Subject<IEntryChange>;
-  private entryRemovedSubject: Subject<IEntrySnapshot>;
+  private entryChangeSubject: Subject<IEntryChange>
+  private entryRemovedSubject: Subject<IEntrySnapshot>
 
-  constructor(private storage: Storage, private prefix?: string) {
-    this.entryChangeSubject = new Subject();
-    this.entryRemovedSubject = new Subject();
+  public readonly prefix: string
+
+  get length() {
+    return this.keys().length
+  }
+
+  private _disposed = false
+
+  get disposed() {
+    return this._disposed
+  }
+
+  constructor(private storage: Storage, prefix?: string) {
+    this.prefix = prefix ?? ''
+
+    this.entryChangeSubject = new Subject()
+    this.entryRemovedSubject = new Subject()
   }
 
   onItemChanged(keyOrKeys?: string | string[]): Observable<IEntryChange> {
-    let observable: Observable<IEntryChange> = this.entryChangeSubject;
+    let observable: Observable<IEntryChange> = this.entryChangeSubject
     if (typeof keyOrKeys === 'string') {
-      observable = observable.pipe(filter((x) => keyOrKeys === x.key));
+      observable = observable.pipe(filter((x) => keyOrKeys === x.key))
     } else if (Array.isArray(keyOrKeys)) {
-      observable = observable.pipe(filter((x) => keyOrKeys.includes(x.key)));
+      observable = observable.pipe(filter((x) => keyOrKeys.includes(x.key)))
     }
-    return observable;
+    return observable
   }
 
   onItemRemoved(keyOrKeys?: string | string[]): Observable<IEntrySnapshot> {
-    let observable: Observable<IEntrySnapshot> = this.entryRemovedSubject;
+    let observable: Observable<IEntrySnapshot> = this.entryRemovedSubject
     if (typeof keyOrKeys === 'string') {
-      observable = observable.pipe(filter((x) => keyOrKeys === x.key));
+      observable = observable.pipe(filter((x) => keyOrKeys === x.key))
     } else if (Array.isArray(keyOrKeys)) {
-      observable = observable.pipe(filter((x) => keyOrKeys.includes(x.key)));
+      observable = observable.pipe(filter((x) => keyOrKeys.includes(x.key)))
     }
-    return observable;
+    return observable
   }
 
   hasItem(key: string) {
-    return !!this.storage.getItem(this.insertPrefix(key));
+    return !!this.storage.getItem(this.insertPrefix(key))
   }
 
   getItem<T = any>(key: string): T {
-    let aux: any = this.storage.getItem(this.insertPrefix(key));
+    let aux: any = this.storage.getItem(this.insertPrefix(key))
     if (aux) {
-      aux = JSON.parse(aux);
+      aux = JSON.parse(aux)
     }
-    return aux;
+    return aux
+  }
+
+  key<T = any>(index: number): T {
+    let keys = this.keys()
+    let key = keys[index]
+    return this.getItem(key)
   }
 
   setItem(key: string, newItem: any) {
-    const oldItem = this.getItem(key);
-    this.storage.setItem(this.insertPrefix(key), JSON.stringify(newItem));
-    this.entryChangeSubject.next({ key, oldItem, newItem });
+    const oldItem = this.getItem(key)
+    this.storage.setItem(this.insertPrefix(key), JSON.stringify(newItem))
+    this.entryChangeSubject.next({ key, oldItem, newItem })
   }
 
   keys(filter?: FilterType): string[] {
     let keys = Object.keys(this.storage)
       .filter((key) => this.hasPrefix(key))
-      .map((key) => this.removePrefix(key));
+      .map((key) => this.removePrefix(key))
     if (filter) {
-      keys = keys.filter(filter);
+      keys = keys.filter(filter)
     }
-    return keys;
+    return keys
   }
 
   *keysIterator(filter?: FilterType): IterableIterator<string> {
-    const keys = this.keys();
+    const keys = this.keys()
     if (filter) {
       for (const key of keys) {
         if (filter(key)) {
-          yield key;
+          yield key
         }
       }
     } else {
       for (const key of keys) {
-        yield key;
+        yield key
       }
     }
   }
 
   items(filter?: FilterType): any[] {
-    const keys = this.keys(filter);
-    const size = keys.length;
-    const items = new Array(size);
+    const keys = this.keys(filter)
+    const size = keys.length
+    const items = new Array(size)
     for (let i = 0; i < size; ++i) {
-      items[i] = this.getItem(keys[i]);
+      items[i] = this.getItem(keys[i])
     }
-    return items;
+    return items
   }
 
   *itemsIterator(filter?: FilterType): IterableIterator<any> {
-    const keys = this.keysIterator(filter);
+    const keys = this.keysIterator(filter)
     for (const key of keys) {
-      yield this.getItem(key);
+      yield this.getItem(key)
     }
   }
 
   entries(filter?: FilterType): IEntry[] {
-    const keys = this.keys(filter);
-    const size = keys.length;
-    const entries = new Array<IEntry>(size);
+    const keys = this.keys(filter)
+    const size = keys.length
+    const entries = new Array<IEntry>(size)
     for (let i = 0; i < size; ++i) {
-      entries[i] = this.entry(keys[i]);
+      entries[i] = this.entry(keys[i])
     }
-    return entries;
+    return entries
   }
 
   *entriesIterator(filter?: FilterType): IterableIterator<IEntry> {
-    const keys = this.keysIterator(filter);
+    const keys = this.keysIterator(filter)
     for (const key of keys) {
-      yield this.entry(key);
+      yield this.entry(key)
     }
   }
 
   entriesSnapshot(filter?: FilterType): IEntrySnapshot[] {
-    const keys = this.keys(filter);
-    const size = keys.length;
-    const entries = new Array<IEntrySnapshot>(size);
+    const keys = this.keys(filter)
+    const size = keys.length
+    const entries = new Array<IEntrySnapshot>(size)
     for (let i = 0; i < size; ++i) {
-      entries[i] = this.entrySnapshot(keys[i]);
+      entries[i] = this.entrySnapshot(keys[i])
     }
-    return entries;
+    return entries
   }
 
-  *entriesSnapshotIterator(
-    filter?: FilterType
-  ): IterableIterator<IEntrySnapshot> {
-    const keys = this.keysIterator(filter);
+  *entriesSnapshotIterator(filter?: FilterType): IterableIterator<IEntrySnapshot> {
+    const keys = this.keysIterator(filter)
     for (const key of keys) {
-      yield this.entrySnapshot(key);
+      yield this.entrySnapshot(key)
     }
   }
 
   entry(key: string): IEntry {
-    return new Entry(key, this);
+    return new Entry(key, this)
   }
 
   entrySnapshot(key: string): IEntrySnapshot {
-    return new EntrySnapshot(key, this.getItem(key), this.hasItem(key));
+    return new EntrySnapshot(key, this.getItem(key), this.hasItem(key))
   }
 
   removeItem(key: string) {
-    const entry = this.entrySnapshot(key);
-    this.storage.removeItem(this.insertPrefix(key));
-    this.entryRemovedSubject.next(entry);
+    const entry = this.entrySnapshot(key)
+    this.storage.removeItem(this.insertPrefix(key))
+    this.entryRemovedSubject.next(entry)
   }
 
   clear(filter?: FilterType) {
     const entries =
-      !filter && !this.entryRemovedSubject.observers.length
-        ? null
-        : this.entriesSnapshot(filter);
+      !filter && !this.entryRemovedSubject.observers.length ? null : this.entriesSnapshot(filter)
     if (!filter) {
-      this.storage.clear();
+      this.storage.clear()
     } else if (entries) {
       for (const entry of entries) {
-        this.storage.removeItem(entry.key);
+        this.storage.removeItem(entry.key)
       }
     }
 
     if (entries && this.entryRemovedSubject.observers.length) {
       for (const entry of entries) {
-        this.entryRemovedSubject.next(entry);
+        this.entryRemovedSubject.next(entry)
       }
     }
   }
 
+  scope(prefix?: string) {
+    prefix = [this.prefix, prefix].filter(x => !!x).join('.')
+
+    return new RxScopeStorage(this.storage, prefix)
+  }
+
+  dispose() {
+    if (this.disposed) {
+      return
+    }
+
+    this._disposed = true
+
+    for (const subject of [this.entryChangeSubject, this.entryRemovedSubject]) {
+      subject.complete()
+      subject.unsubscribe()
+    }
+  }
+
+  [Symbol.dispose]() {
+    this.dispose()
+  }
+
   protected insertPrefix(key: string): string {
-    return (this.prefix ?? '') + '.' + key;
+    return (this.prefix ?? '') + '.' + key
   }
 
   protected removePrefix(key: string): string {
-    return key.slice(((this.prefix ?? '') + '.').length);
+    return key.slice(((this.prefix ?? '') + '.').length)
   }
 
   protected hasPrefix(key: string): boolean {
-    return key.startsWith((this.prefix ?? '') + '.');
+    return key.startsWith((this.prefix ?? '') + '.')
   }
+}
+
+class RxScopeStorage extends RxAbstractStorage {
+
 }
