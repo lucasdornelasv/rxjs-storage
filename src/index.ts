@@ -1,3 +1,3 @@
-export * from './local';
-export * from './session';
-export * from './memory';
+export * from "./internal/rx-storage";
+export * from "./internal/interfaces";
+export { provideMemoryStorage } from "./internal/helpers";

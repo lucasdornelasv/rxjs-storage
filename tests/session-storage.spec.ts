@@ -1,4 +1,3 @@
-import { RxSessionStorage } from '../src/session';
-import { createTests } from './default-tests.factory';
+import { createTests } from "./default-tests.factory";
 
-createTests('Session Storage Service', RxSessionStorage)
+createTests("Session Storage Service", sessionStorage);

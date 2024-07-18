@@ -1,4 +1,4 @@
-import { RxMemoryStorage } from '../src/memory'
-import { createTests } from './default-tests.factory'
+import { provideMemoryStorage } from "../src/internal/helpers";
+import { createTests } from "./default-tests.factory";
 
-createTests('Memory Storage Service', RxMemoryStorage)
+createTests("Memory Storage Service", provideMemoryStorage());
