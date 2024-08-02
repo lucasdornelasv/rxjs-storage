@@ -12,11 +12,12 @@ import {
   handleKeyOrKeys,
   hasPrefix,
   insertPrefix,
+  removePrefix,
 } from "./helpers";
 
 export class Entry<T = any> implements IEntry<T> {
   constructor(
-    public key: string,
+    public readonly key: string,
     private storage: IRxStorage,
   ) {}
 
@@ -24,7 +25,7 @@ export class Entry<T = any> implements IEntry<T> {
     return this.get();
   }
 
-  set item(value: any) {
+  set item(value: T) {
     this.set(value);
   }
 
@@ -94,13 +95,17 @@ export abstract class RxAbstractStorage implements IRxStorage {
     keyOrKeys?: string | string[],
   ): Observable<EntryChangeEvent<T>>;
 
-  abstract onItemChanged<T = any>(
+  onItemChanged<T = any>(
     keyOrKeys?: string | string[],
-  ): Observable<EntryChangeEvent<T>>;
+  ): Observable<EntryChangeEvent<T>> {
+    return this.watch<T>(keyOrKeys).pipe(filter((x) => !x.removed));
+  }
 
-  abstract onItemRemoved<T = any>(
+  onItemRemoved<T = any>(
     keyOrKeys?: string | string[],
-  ): Observable<EntryChangeEvent<T>>;
+  ): Observable<EntryChangeEvent<T>> {
+    return this.watch<T>(keyOrKeys).pipe(filter((x) => x.removed));
+  }
 
   abstract hasItem(key: string): boolean;
 
@@ -113,25 +118,23 @@ export abstract class RxAbstractStorage implements IRxStorage {
   abstract setItem(key: string, newItem: any): void;
 
   key(index: number): string | null {
-    return this.keys().at(index);
-  }
-
-  abstract keys(): string[];
-
-  *keysIterator(filter?: FilterType): IterableIterator<string> {
-    const keys = this.keys();
-    if (filter) {
-      for (const key of keys) {
-        if (filter(key)) {
-          yield key;
-        }
+    let i = 0;
+    for (const key of this.keysIterator()) {
+      if (i === index) {
+        return key;
       }
-    } else {
-      for (const key of keys) {
-        yield key;
-      }
+
+      ++i;
     }
+
+    return null;
   }
+
+  keys(): string[] {
+    return Array.from(this.keysIterator());
+  }
+
+  abstract keysIterator(filter?: FilterType): IterableIterator<string>;
 
   items(filter?: FilterType): any[] {
     return Array.from(this.itemsIterator(filter));
@@ -216,36 +219,6 @@ class RxScopeStorage extends RxAbstractStorage {
     return observable;
   }
 
-  onItemChanged<T = any>(
-    keyOrKeys?: string | string[],
-  ): Observable<EntryChangeEvent> {
-    const { prefix } = this;
-    keyOrKeys = handleKeyOrKeys(prefix, keyOrKeys);
-
-    let observable = this.source.onItemChanged<T>(keyOrKeys);
-
-    if (!keyOrKeys) {
-      observable = observable.pipe(filter((x) => hasPrefix(prefix, x.key)));
-    }
-
-    return observable;
-  }
-
-  onItemRemoved<T = any>(
-    keyOrKeys?: string | string[],
-  ): Observable<EntryChangeEvent> {
-    const { prefix } = this;
-    keyOrKeys = handleKeyOrKeys(prefix, keyOrKeys);
-
-    let observable = this.source.onItemRemoved<T>(keyOrKeys);
-
-    if (!keyOrKeys) {
-      observable = observable.pipe(filter((x) => hasPrefix(prefix, x.key)));
-    }
-
-    return observable;
-  }
-
   hasItem(key: string) {
     return this.source.hasItem(insertPrefix(this.prefix, key));
   }
@@ -258,12 +231,12 @@ class RxScopeStorage extends RxAbstractStorage {
     this.source.setItem(insertPrefix(this.prefix, key), newItem);
   }
 
-  keys(): string[] {
-    return this.source.keys().filter(handleFilter(this.prefix));
-  }
-
-  keysIterator(filter?: FilterType): IterableIterator<string> {
-    return this.source.keysIterator(handleFilter(this.prefix, filter));
+  *keysIterator(filter?: FilterType): IterableIterator<string> {
+    for (const key of this.source.keysIterator(
+      handleFilter(this.prefix, filter),
+    )) {
+      yield removePrefix(this.prefix, key);
+    }
   }
 
   removeItem(key: string): void {

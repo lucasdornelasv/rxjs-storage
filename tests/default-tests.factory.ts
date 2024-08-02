@@ -1,8 +1,17 @@
 import { IRxStorage } from "../src/internal/interfaces";
 import { RxStorage } from "../src/internal/rx-storage";
 
+let STORAGE_ID = 0;
+
 export function createTests(name: string, source: Storage) {
-  const storageFactory: (prefix?: string) => IRxStorage = (prefix) => {
+  const storageFactory: (prefix?: string, useUnique?: boolean) => IRxStorage = (
+    prefix = "",
+    useUnique = true,
+  ) => {
+    if (useUnique) {
+      prefix = `${++STORAGE_ID}-${prefix}`;
+    }
+
     return new RxStorage(source, prefix);
   };
 
@@ -177,13 +186,69 @@ export function createTests(name: string, source: Storage) {
       expect(scoped !== storage).toBeTruthy();
       expect(storage.prefix === scoped.prefix).toBeFalsy();
       expect(storage.length === scoped.length).toBeFalsy();
+      expect(storage.length === 1).toBeTruthy();
 
       scoped.setItem("test", 3);
-
       expect(storage.length === scoped.length).toBeFalsy();
+      expect(storage.length === 2).toBeTruthy();
+
+      storage.setItem("nova chave", 4);
+      expect(storage.length === scoped.length).toBeFalsy();
+      expect(storage.length === 3).toBeTruthy();
+      expect(scoped.length === 1).toBeTruthy();
 
       using storageWithSameScopePrefix = storageFactory("scope");
       expect(storageWithSameScopePrefix.length === 0).toBeTruthy();
+    });
+
+    test("Entry", () => {
+      using storage = storageFactory("host");
+
+      storage.setItem("test", 1);
+      storage.setItem("test", 2);
+      storage.setItem("test2", 3);
+      expect(storage.length === 2).toBeTruthy();
+
+      let entry = storage.entry("test");
+      expect(entry.exists).toBeTruthy();
+      expect(entry.get() === 2).toBeTruthy();
+
+      entry.set(22);
+      expect(entry.exists).toBeTruthy();
+      expect(entry.get() === 22).toBeTruthy();
+      expect(entry.get() === storage.getItem("test")).toBeTruthy();
+      expect(storage.length === 2).toBeTruthy();
+
+      entry.remove();
+      expect(!entry.exists).toBeTruthy();
+      expect(entry.get() === null).toBeTruthy();
+      expect(entry.get() === storage.getItem("test")).toBeTruthy();
+      expect(storage.length === 1).toBeTruthy();
+
+      entry.set(23);
+      expect(entry.exists).toBeTruthy();
+      expect(entry.get() === 23).toBeTruthy();
+      expect(entry.get() === storage.getItem("test")).toBeTruthy();
+      expect(storage.length === 2).toBeTruthy();
+
+      entry = storage.entry("new entry");
+      expect(!entry.exists).toBeTruthy();
+      expect(entry.get() === null).toBeTruthy();
+      expect(entry.get() === storage.getItem("new entry")).toBeTruthy();
+      expect(storage.length === 2).toBeTruthy();
+
+      entry.set("new value");
+      expect(entry.exists).toBeTruthy();
+      expect(entry.get() === "new value").toBeTruthy();
+      expect(entry.get() === storage.getItem("new entry")).toBeTruthy();
+      expect(storage.length === 3).toBeTruthy();
+
+      storage.removeItem("new entry");
+      expect(!storage.hasItem("new entry")).toBeTruthy();
+      expect(!entry.exists).toBeTruthy();
+      expect(entry.get() === null).toBeTruthy();
+      expect(entry.get() === storage.getItem("new entry")).toBeTruthy();
+      expect(storage.length === 2).toBeTruthy();
     });
   });
 }

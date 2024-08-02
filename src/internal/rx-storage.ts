@@ -49,26 +49,34 @@ export class RxStorage extends RxAbstractStorage {
     return observable;
   }
 
-  onItemChanged<T = any>(
-    keyOrKeys?: string | string[],
-  ): Observable<EntryChangeEvent<T>> {
-    return this.watch(keyOrKeys).pipe(filter((x) => !x.removed));
-  }
+  *keysIterator(filter?: FilterType): IterableIterator<string> {
+    const keys = Object.keys(this.storage);
+    if (filter) {
+      for (let key of keys) {
+        if (!hasPrefix(this.prefix, key)) {
+          continue;
+        }
 
-  onItemRemoved<T = any>(
-    keyOrKeys?: string | string[],
-  ): Observable<EntryChangeEvent<T>> {
-    return this.watch(keyOrKeys).pipe(filter((x) => x.removed));
-  }
+        key = removePrefix(this.prefix, key);
+        if (filter(key)) {
+          yield key;
+        }
+      }
+    } else {
+      for (let key of keys) {
+        if (!hasPrefix(this.prefix, key)) {
+          continue;
+        }
 
-  keys(): string[] {
-    return Object.keys(this.storage)
-      .filter((key) => hasPrefix(this.prefix, key))
-      .map((key) => removePrefix(this.prefix, key));
+        key = removePrefix(this.prefix, key);
+        yield key;
+      }
+    }
   }
 
   hasItem(key: string) {
-    return !!this.storage.getItem(insertPrefix(this.prefix, key));
+    key = insertPrefix(this.prefix, key);
+    return !!(key in this.storage);
   }
 
   setItem(key: string, newItem: any) {
