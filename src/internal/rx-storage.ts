@@ -1,16 +1,22 @@
 import {
   IRxStorage,
-  IEntryChange,
+  EntryChangeEvent,
   FilterType,
   IEntrySnapshot,
 } from "./interfaces";
 import { Subject, Observable, Subscription, fromEvent, merge } from "rxjs";
 import { filter } from "rxjs/operators";
 import { RxAbstractStorage } from "./abstract-storage";
-import { setupNativeListeners, StorageEventsConfig } from "./helpers";
+import {
+  hasPrefix,
+  insertPrefix,
+  removePrefix,
+  setupNativeListeners,
+  StorageEventsConfig,
+} from "./helpers";
 
 export class RxStorage extends RxAbstractStorage {
-  private _entryChangeSubject: Subject<IEntryChange>;
+  private _entryChangeSubject: Subject<EntryChangeEvent>;
   private get entryChangeSubject() {
     if (!this._entryChangeSubject) {
       this._entryChangeSubject = new Subject();
@@ -18,17 +24,6 @@ export class RxStorage extends RxAbstractStorage {
 
     return this._entryChangeSubject;
   }
-
-  private _entryRemovedSubject: Subject<IEntrySnapshot>;
-  private get entryRemovedSubject() {
-    if (!this._entryRemovedSubject) {
-      this._entryRemovedSubject = new Subject();
-    }
-
-    return this._entryRemovedSubject;
-  }
-
-  private storageEventsConfig: StorageEventsConfig;
 
   private _subscription: Subscription;
 
@@ -39,55 +34,63 @@ export class RxStorage extends RxAbstractStorage {
     super(prefix);
   }
 
-  onItemChanged(keyOrKeys?: string | string[]): Observable<IEntryChange> {
+  watch<T = any>(
+    keyOrKeys?: string | string[],
+  ): Observable<EntryChangeEvent<T>> {
     this._setupGlobalObservers();
 
-    let observable: Observable<IEntryChange> = this.entryChangeSubject;
+    let observable: Observable<EntryChangeEvent<T>> = this.entryChangeSubject;
     if (typeof keyOrKeys === "string") {
       observable = observable.pipe(filter((x) => keyOrKeys === x.key));
     } else if (Array.isArray(keyOrKeys)) {
       observable = observable.pipe(filter((x) => keyOrKeys.includes(x.key)));
     }
+
     return observable;
   }
 
-  onItemRemoved(keyOrKeys?: string | string[]): Observable<IEntrySnapshot> {
-    this._setupGlobalObservers();
+  onItemChanged<T = any>(
+    keyOrKeys?: string | string[],
+  ): Observable<EntryChangeEvent<T>> {
+    return this.watch(keyOrKeys).pipe(filter((x) => !x.removed));
+  }
 
-    let observable: Observable<IEntrySnapshot> = this.entryRemovedSubject;
-    if (typeof keyOrKeys === "string") {
-      observable = observable.pipe(filter((x) => keyOrKeys === x.key));
-    } else if (Array.isArray(keyOrKeys)) {
-      observable = observable.pipe(filter((x) => keyOrKeys.includes(x.key)));
-    }
-    return observable;
+  onItemRemoved<T = any>(
+    keyOrKeys?: string | string[],
+  ): Observable<EntryChangeEvent<T>> {
+    return this.watch(keyOrKeys).pipe(filter((x) => x.removed));
   }
 
   keys(): string[] {
     return Object.keys(this.storage)
-      .filter((key) => this.hasPrefix(key))
-      .map((key) => this.removePrefix(key));
+      .filter((key) => hasPrefix(this.prefix, key))
+      .map((key) => removePrefix(this.prefix, key));
   }
 
   hasItem(key: string) {
-    return !!this.storage.getItem(this.insertPrefix(key));
+    return !!this.storage.getItem(insertPrefix(this.prefix, key));
   }
 
   setItem(key: string, newItem: any) {
-    this.storage.setItem(this.insertPrefix(key), JSON.stringify(newItem));
+    this.storage.setItem(
+      insertPrefix(this.prefix, key),
+      JSON.stringify(newItem),
+    );
   }
 
   getItem<T = any>(key: string): T {
-    return this.handleItem(this.storage.getItem(this.insertPrefix(key)));
+    return this.handleItem(
+      this.storage.getItem(insertPrefix(this.prefix, key)),
+    );
   }
 
   removeItem(key: string) {
-    this.storage.removeItem(this.insertPrefix(key));
+    this.storage.removeItem(insertPrefix(this.prefix, key));
   }
 
   clear(filter?: FilterType) {
     for (const key of this.keysIterator(filter)) {
-      this.storage.removeItem(this.insertPrefix(key));
+      this.storage.removeItem(insertPrefix(this.prefix, key));
     }
   }
 
@@ -104,10 +107,8 @@ export class RxStorage extends RxAbstractStorage {
 
     this._subscription?.unsubscribe();
 
-    for (const subject of [this.entryChangeSubject, this.entryRemovedSubject]) {
-      subject?.complete();
-      subject?.unsubscribe();
-    }
+    this._entryChangeSubject?.complete();
+    this._entryChangeSubject?.unsubscribe();
   }
 
   private handleItem(value: any) {
@@ -125,22 +126,28 @@ export class RxStorage extends RxAbstractStorage {
 
     const thisRef = new WeakRef(this);
 
-    this.storageEventsConfig = setupNativeListeners(this.storage);
+    const { changes } = setupNativeListeners(this.storage);
 
-    this._subscription = merge(
-      fromEvent(window, "storage"),
-      this.storageEventsConfig.changes,
-    ).subscribe((e: StorageEvent) => {
+    let observable: Observable<StorageEvent> = changes;
+
+    if (this.storage === globalThis.localStorage) {
+      observable = merge(
+        fromEvent<StorageEvent>(window, "storage"),
+        observable,
+      );
+    }
+
+    this._subscription = observable.subscribe((e: StorageEvent) => {
       const self = thisRef.deref();
       if (self.storage !== e.storageArea) {
         return;
       }
 
-      if (e.key === null || !self.hasPrefix(e.key)) {
+      if (e.key === null || !hasPrefix(self.prefix, e.key)) {
         return;
       }
 
-      const key = self.removePrefix(e.key);
+      const key = removePrefix(self.prefix, e.key);
 
       const oldItem = self.handleItem(e.oldValue);
       if (e.oldValue === null || e.newValue !== null) {
@@ -149,12 +156,14 @@ export class RxStorage extends RxAbstractStorage {
           key,
           newItem,
           oldItem,
+          removed: false,
         });
       } else {
-        self.entryRemovedSubject.next({
+        self.entryChangeSubject.next({
           key,
-          item: oldItem,
-          exists: false,
+          newItem: null,
+          oldItem,
+          removed: true,
         });
       }
     });

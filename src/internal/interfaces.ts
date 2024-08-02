@@ -7,8 +7,10 @@ export interface IEntry<T = any> {
   set(value: T): void;
   get(): T;
   remove(): void;
-  onChanged(): Observable<IEntryChange<T>>;
-  onRemoved(): Observable<IEntrySnapshot<T>>;
+  stream(): Observable<T>;
+  watch(): Observable<EntryChangeEvent<T>>;
+  onChanged(): Observable<EntryChangeEvent<T>>;
+  onRemoved(): Observable<EntryChangeEvent<T>>;
 }
 
 export interface IEntrySnapshot<T = any> {
@@ -17,10 +19,11 @@ export interface IEntrySnapshot<T = any> {
   readonly exists: boolean;
 }
 
-export interface IEntryChange<T = any> {
-  key: string;
-  oldItem: T;
-  newItem: T;
+export interface EntryChangeEvent<T = any> {
+  readonly key: string;
+  readonly oldItem: T;
+  readonly newItem: T;
+  readonly removed: boolean;
 }
 
 export type FilterType = (key: string) => boolean;
@@ -29,8 +32,15 @@ export interface IRxStorage extends Disposable {
   readonly prefix: string;
 
   readonly length: number;
-  onItemChanged(keyOrKeys?: string | string[]): Observable<IEntryChange>;
-  onItemRemoved(keyOrKeys?: string | string[]): Observable<IEntrySnapshot>;
+  watch<T = any>(
+    keyOrKeys?: string | string[],
+  ): Observable<EntryChangeEvent<T>>;
+  onItemChanged<T = any>(
+    keyOrKeys?: string | string[],
+  ): Observable<EntryChangeEvent<T>>;
+  onItemRemoved<T = any>(
+    keyOrKeys?: string | string[],
+  ): Observable<EntryChangeEvent<T>>;
   hasItem(key: string): boolean;
   getItem<T = any>(key: string): T;
   getItemByIndex<T = any>(index: number): T;

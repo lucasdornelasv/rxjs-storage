@@ -1,12 +1,18 @@
 import {
   FilterType,
   IEntry,
-  IEntryChange,
+  EntryChangeEvent,
   IEntrySnapshot,
   IRxStorage,
 } from "./interfaces";
 import { Observable } from "rxjs";
-import { filter } from "rxjs/operators";
+import { distinctUntilChanged, filter, map, startWith } from "rxjs/operators";
+import {
+  handleFilter,
+  handleKeyOrKeys,
+  hasPrefix,
+  insertPrefix,
+} from "./helpers";
 
 export class Entry<T = any> implements IEntry<T> {
   constructor(
@@ -38,11 +44,23 @@ export class Entry<T = any> implements IEntry<T> {
     this.storage.removeItem(this.key);
   }
 
-  onChanged(): Observable<IEntryChange<T>> {
+  stream(): Observable<T> {
+    return this.watch().pipe(
+      map((x) => x.newItem),
+      startWith(this.get()),
+      distinctUntilChanged(),
+    );
+  }
+
+  watch(): Observable<EntryChangeEvent<T>> {
+    return this.storage.watch(this.key);
+  }
+
+  onChanged(): Observable<EntryChangeEvent<T>> {
     return this.storage.onItemChanged(this.key);
   }
 
-  onRemoved(): Observable<IEntrySnapshot<T>> {
+  onRemoved(): Observable<EntryChangeEvent<T>> {
     return this.storage.onItemRemoved(this.key);
   }
 }
@@ -72,13 +90,17 @@ export abstract class RxAbstractStorage implements IRxStorage {
     this.prefix = prefix ?? "";
   }
 
-  abstract onItemChanged(
+  abstract watch<T = any>(
     keyOrKeys?: string | string[],
-  ): Observable<IEntryChange>;
+  ): Observable<EntryChangeEvent<T>>;
 
-  abstract onItemRemoved(
+  abstract onItemChanged<T = any>(
     keyOrKeys?: string | string[],
-  ): Observable<IEntrySnapshot>;
+  ): Observable<EntryChangeEvent<T>>;
+
+  abstract onItemRemoved<T = any>(
+    keyOrKeys?: string | string[],
+  ): Observable<EntryChangeEvent<T>>;
 
   abstract hasItem(key: string): boolean;
 
@@ -169,18 +191,6 @@ export abstract class RxAbstractStorage implements IRxStorage {
   [Symbol.dispose]() {
     this.dispose();
   }
-
-  protected insertPrefix(key: string): string {
-    return (this.prefix ?? "") + "." + key;
-  }
-
-  protected removePrefix(key: string): string {
-    return key.slice(((this.prefix ?? "") + ".").length);
-  }
-
-  protected hasPrefix(key: string): boolean {
-    return key?.startsWith((this.prefix ?? "") + ".") ?? false;
-  }
 }
 
 class RxScopeStorage extends RxAbstractStorage {
@@ -191,56 +201,77 @@ class RxScopeStorage extends RxAbstractStorage {
     super(prefix);
   }
 
-  onItemChanged(keyOrKeys?: string | string[]): Observable<IEntryChange> {
-    keyOrKeys = this.handleKeyOrKeys(keyOrKeys);
+  watch<T = any>(
+    keyOrKeys?: string | string[],
+  ): Observable<EntryChangeEvent<T>> {
+    const { prefix } = this;
+    keyOrKeys = handleKeyOrKeys(prefix, keyOrKeys);
 
-    let observable = this.source.onItemChanged(keyOrKeys);
+    let observable = this.source.watch<T>(keyOrKeys);
 
     if (!keyOrKeys) {
-      observable = observable.pipe(filter((x) => this.hasPrefix(x.key)));
+      observable = observable.pipe(filter((x) => hasPrefix(prefix, x.key)));
     }
 
     return observable;
   }
 
-  onItemRemoved(keyOrKeys?: string | string[]): Observable<IEntrySnapshot> {
-    keyOrKeys = this.handleKeyOrKeys(keyOrKeys);
+  onItemChanged<T = any>(
+    keyOrKeys?: string | string[],
+  ): Observable<EntryChangeEvent> {
+    const { prefix } = this;
+    keyOrKeys = handleKeyOrKeys(prefix, keyOrKeys);
 
-    let observable = this.source.onItemRemoved(keyOrKeys);
+    let observable = this.source.onItemChanged<T>(keyOrKeys);
 
     if (!keyOrKeys) {
-      observable = observable.pipe(filter((x) => this.hasPrefix(x.key)));
+      observable = observable.pipe(filter((x) => hasPrefix(prefix, x.key)));
+    }
+
+    return observable;
+  }
+
+  onItemRemoved<T = any>(
+    keyOrKeys?: string | string[],
+  ): Observable<EntryChangeEvent> {
+    const { prefix } = this;
+    keyOrKeys = handleKeyOrKeys(prefix, keyOrKeys);
+
+    let observable = this.source.onItemRemoved<T>(keyOrKeys);
+
+    if (!keyOrKeys) {
+      observable = observable.pipe(filter((x) => hasPrefix(prefix, x.key)));
     }
 
     return observable;
   }
 
   hasItem(key: string) {
-    return this.source.hasItem(this.insertPrefix(key));
+    return this.source.hasItem(insertPrefix(this.prefix, key));
   }
 
   getItem<T = any>(key: string): T {
-    return this.source.getItem(this.insertPrefix(key));
+    return this.source.getItem(insertPrefix(this.prefix, key));
   }
 
   setItem(key: string, newItem: any) {
-    this.source.setItem(this.insertPrefix(key), newItem);
+    this.source.setItem(insertPrefix(this.prefix, key), newItem);
   }
 
   keys(): string[] {
-    return this.source.keys().filter(this.handleFilter());
+    return this.source.keys().filter(handleFilter(this.prefix));
   }
 
   keysIterator(filter?: FilterType): IterableIterator<string> {
-    return this.source.keysIterator(this.handleFilter(filter));
+    return this.source.keysIterator(handleFilter(this.prefix, filter));
   }
 
   removeItem(key: string): void {
-    this.source.removeItem(this.insertPrefix(key));
+    this.source.removeItem(insertPrefix(this.prefix, key));
   }
 
   clear(filter?: FilterType): void {
-    this.source.clear(this.handleFilter(filter));
+    this.source.clear(handleFilter(this.prefix, filter));
   }
 
   clone(): IRxStorage {
@@ -253,29 +284,5 @@ class RxScopeStorage extends RxAbstractStorage {
     }
 
     this._disposed = true;
-  }
-
-  private handleFilter(filter?: FilterType): FilterType {
-    return (key) => {
-      if (!this.hasPrefix(key)) {
-        return false;
-      }
-
-      if (!filter) {
-        return true;
-      }
-
-      return filter(key);
-    };
-  }
-
-  private handleKeyOrKeys(keyOrKeys?: string | string[]) {
-    if (Array.isArray(keyOrKeys)) {
-      keyOrKeys = keyOrKeys.map((key) => this.insertPrefix(key));
-    } else if (typeof keyOrKeys === "string") {
-      keyOrKeys = this.insertPrefix(keyOrKeys);
-    }
-
-    return keyOrKeys;
   }
 }
