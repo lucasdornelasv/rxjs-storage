@@ -1,5 +1,10 @@
 import { Observable } from "rxjs";
 
+export interface IDisposable extends Disposable {
+  readonly disposed: boolean;
+  dispose();
+}
+
 export interface IEntry<T = any> {
   readonly key: string;
   item: T;
@@ -28,7 +33,7 @@ export interface EntryChangeEvent<T = any> {
 
 export type FilterType = (key: string) => boolean;
 
-export interface IRxStorage extends Disposable {
+export interface IRxStorage extends IDisposable {
   readonly prefix: string;
 
   readonly length: number;
@@ -66,7 +71,4 @@ export interface IRxStorage extends Disposable {
   clear(filter?: FilterType);
   scope(prefix: string): IRxStorage;
   clone(): IRxStorage;
-
-  readonly disposed: boolean;
-  dispose();
 }

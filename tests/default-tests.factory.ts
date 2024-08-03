@@ -250,5 +250,94 @@ export function createTests(name: string, source: Storage) {
       expect(entry.get() === storage.getItem("new entry")).toBeTruthy();
       expect(storage.length === 2).toBeTruthy();
     });
+
+    test("Bulk events - single", (cb) => {
+      const storage = storageFactory("host");
+
+      let times = 3;
+      let counter = 0;
+      let terminated = false;
+
+      storage.watchBulk("key1").subscribe({
+        next: (events) => {
+          expect(events.every((x) => x.key === "key1")).toBeTruthy();
+          expect(events.length === 5).toBeTruthy();
+          expect(events.at(0)?.newItem === 0).toBeTruthy();
+          expect(events.at(events.length - 1)?.newItem === 4).toBeTruthy();
+
+          if (terminated) {
+            storage.dispose();
+          }
+        },
+        complete: () => {
+          cb();
+        },
+      });
+
+      const fn = () => {
+        ++counter;
+
+        for (let i = 0; i < 5; ++i) {
+          storage.setItem("key1", i);
+          storage.setItem("key2", i);
+        }
+
+        if (counter >= times) {
+          terminated = true;
+          return;
+        }
+
+        setTimeout(fn, 20);
+      };
+
+      fn();
+    });
+
+    test("Bulk events - multiple", (cb) => {
+      const storage = storageFactory("host");
+
+      let times = 3;
+      let counter = 0;
+      let terminated = false;
+
+      storage.watchBulk(["key1", "key2"]).subscribe({
+        next: (events) => {
+          expect(
+            events.every((x) => ["key1", "key2"].includes(x.key)),
+          ).toBeTruthy();
+          expect(events.some((x) => x.key === "key1")).toBeTruthy();
+          expect(events.some((x) => x.key === "key2")).toBeTruthy();
+          expect(events.length === 10).toBeTruthy();
+          expect(events.at(0)?.newItem === 0).toBeTruthy();
+          expect(events.at(events.length - 1)?.newItem === 4).toBeTruthy();
+
+          if (terminated) {
+            storage.dispose();
+          }
+        },
+        complete: () => {
+          cb();
+        },
+      });
+
+      const fn = () => {
+        ++counter;
+
+        for (let i = 0; i < 5; ++i) {
+          storage.setItem("key1", i);
+          storage.setItem("key2", i);
+          storage.setItem("key3", i);
+        }
+
+        if (counter >= times) {
+          terminated = true;
+          return;
+        }
+
+        setTimeout(fn, 20);
+      };
+
+      fn();
+    });
   });
 }

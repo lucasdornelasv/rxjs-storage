@@ -5,7 +5,7 @@ import {
   IEntrySnapshot,
   IRxStorage,
 } from "./interfaces";
-import { from, Observable } from "rxjs";
+import { from, Observable, Subject } from "rxjs";
 import {
   distinctUntilChanged,
   filter,
@@ -13,6 +13,7 @@ import {
   mergeMap,
   share,
   startWith,
+  takeUntil,
 } from "rxjs/operators";
 import {
   handleFilter,
@@ -214,6 +215,15 @@ export abstract class RxAbstractStorage implements IRxStorage {
 }
 
 class RxScopeStorage extends RxAbstractStorage {
+  private _lifecycleSubject: Subject<void>;
+  private get lifecycleSubject() {
+    if (!this._lifecycleSubject) {
+      this._lifecycleSubject = new Subject();
+    }
+
+    return this._lifecycleSubject;
+  }
+
   constructor(
     private source: IRxStorage,
     prefix?: string,
@@ -236,7 +246,7 @@ class RxScopeStorage extends RxAbstractStorage {
       );
     }
 
-    return observable;
+    return observable.pipe(takeUntil(this.lifecycleSubject));
   }
 
   hasItem(key: string) {
@@ -277,5 +287,8 @@ class RxScopeStorage extends RxAbstractStorage {
     }
 
     this._disposed = true;
+
+    this._lifecycleSubject?.complete();
+    this._lifecycleSubject?.unsubscribe();
   }
 }

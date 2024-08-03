@@ -7,10 +7,11 @@ import {
   merge,
   asapScheduler,
 } from "rxjs";
-import { bufferTime, filter, map } from "rxjs/operators";
+import { filter, map } from "rxjs/operators";
 import { RxAbstractStorage } from "./abstract-storage";
 import { hasPrefix, insertPrefix, removePrefix } from "./helpers";
 import { setupNativeListeners } from "./native-storage";
+import { bufferTick } from "./rx-operators/bufferTick";
 
 export class RxStorage extends RxAbstractStorage {
   private _entriesChangeSubject: Subject<EntryChangeEvent[]>;
@@ -191,7 +192,7 @@ export class RxStorage extends RxAbstractStorage {
             removed,
           } as EntryChangeEvent;
         }),
-        bufferTime(0, asapScheduler),
+        bufferTick(asapScheduler),
       )
       .subscribe((events) => {
         const self = thisRef.deref();
