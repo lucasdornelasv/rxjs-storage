@@ -32,6 +32,10 @@ export interface IRxStorage extends Disposable {
   readonly prefix: string;
 
   readonly length: number;
+
+  watchBulk<T = any>(
+    keyOrKeys?: string | string[],
+  ): Observable<ReadonlyArray<EntryChangeEvent<T>>>;
   watch<T = any>(
     keyOrKeys?: string | string[],
   ): Observable<EntryChangeEvent<T>>;

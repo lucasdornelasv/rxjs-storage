@@ -1,28 +1,25 @@
+import { IRxStorage, EntryChangeEvent, FilterType } from "./interfaces";
 import {
-  IRxStorage,
-  EntryChangeEvent,
-  FilterType,
-  IEntrySnapshot,
-} from "./interfaces";
-import { Subject, Observable, Subscription, fromEvent, merge } from "rxjs";
-import { filter } from "rxjs/operators";
+  Subject,
+  Observable,
+  Subscription,
+  fromEvent,
+  merge,
+  asapScheduler,
+} from "rxjs";
+import { bufferTime, filter, map } from "rxjs/operators";
 import { RxAbstractStorage } from "./abstract-storage";
-import {
-  hasPrefix,
-  insertPrefix,
-  removePrefix,
-  setupNativeListeners,
-  StorageEventsConfig,
-} from "./helpers";
+import { hasPrefix, insertPrefix, removePrefix } from "./helpers";
+import { setupNativeListeners } from "./native-storage";
 
 export class RxStorage extends RxAbstractStorage {
-  private _entryChangeSubject: Subject<EntryChangeEvent>;
-  private get entryChangeSubject() {
-    if (!this._entryChangeSubject) {
-      this._entryChangeSubject = new Subject();
+  private _entriesChangeSubject: Subject<EntryChangeEvent[]>;
+  private get entriesChangeSubject() {
+    if (!this._entriesChangeSubject) {
+      this._entriesChangeSubject = new Subject();
     }
 
-    return this._entryChangeSubject;
+    return this._entriesChangeSubject;
   }
 
   private _subscription: Subscription;
@@ -34,16 +31,27 @@ export class RxStorage extends RxAbstractStorage {
     super(prefix);
   }
 
-  watch<T = any>(
+  override watchBulk<T = any>(
     keyOrKeys?: string | string[],
-  ): Observable<EntryChangeEvent<T>> {
+  ): Observable<ReadonlyArray<EntryChangeEvent<T>>> {
     this._setupGlobalObservers();
 
-    let observable: Observable<EntryChangeEvent<T>> = this.entryChangeSubject;
+    let filterEvent: (event: EntryChangeEvent<T>) => boolean;
+
     if (typeof keyOrKeys === "string") {
-      observable = observable.pipe(filter((x) => keyOrKeys === x.key));
+      filterEvent = (x) => x.key === keyOrKeys;
     } else if (Array.isArray(keyOrKeys)) {
-      observable = observable.pipe(filter((x) => keyOrKeys.includes(x.key)));
+      filterEvent = (x) => keyOrKeys.includes(x.key);
+    }
+
+    let observable: Observable<EntryChangeEvent<T>[]> =
+      this.entriesChangeSubject;
+
+    if (filterEvent) {
+      observable = observable.pipe(
+        map((events) => events.filter(filterEvent)),
+        filter((events) => events.length > 0),
+      );
     }
 
     return observable;
@@ -115,8 +123,8 @@ export class RxStorage extends RxAbstractStorage {
 
     this._subscription?.unsubscribe();
 
-    this._entryChangeSubject?.complete();
-    this._entryChangeSubject?.unsubscribe();
+    this._entriesChangeSubject?.complete();
+    this._entriesChangeSubject?.unsubscribe();
   }
 
   private handleItem(value: any) {
@@ -134,46 +142,60 @@ export class RxStorage extends RxAbstractStorage {
 
     const thisRef = new WeakRef(this);
 
-    const { changes } = setupNativeListeners(this.storage);
-
-    let observable: Observable<StorageEvent> = changes;
+    let observable: Observable<StorageEvent> = setupNativeListeners(
+      this.storage,
+    );
 
     if (this.storage === globalThis.localStorage) {
       observable = merge(
-        fromEvent<StorageEvent>(window, "storage"),
+        fromEvent<StorageEvent>(globalThis.window, "storage"),
         observable,
       );
     }
 
-    this._subscription = observable.subscribe((e: StorageEvent) => {
-      const self = thisRef.deref();
-      if (self.storage !== e.storageArea) {
-        return;
-      }
+    this._subscription = observable
+      .pipe(
+        filter((e: StorageEvent) => {
+          const self = thisRef.deref();
+          if (self.storage !== e.storageArea) {
+            return false;
+          }
 
-      if (e.key === null || !hasPrefix(self.prefix, e.key)) {
-        return;
-      }
+          if (e.key === null || !hasPrefix(self.prefix, e.key)) {
+            return false;
+          }
 
-      const key = removePrefix(self.prefix, e.key);
+          return true;
+        }),
+        map((e: StorageEvent) => {
+          const self = thisRef.deref();
 
-      const oldItem = self.handleItem(e.oldValue);
-      if (e.oldValue === null || e.newValue !== null) {
-        const newItem = self.handleItem(e.newValue);
-        self.entryChangeSubject.next({
-          key,
-          newItem,
-          oldItem,
-          removed: false,
-        });
-      } else {
-        self.entryChangeSubject.next({
-          key,
-          newItem: null,
-          oldItem,
-          removed: true,
-        });
-      }
-    });
+          const key = removePrefix(self.prefix, e.key);
+
+          const oldItem = self.handleItem(e.oldValue);
+          let newItem: any;
+          let removed: boolean;
+
+          if (e.oldValue === null || e.newValue !== null) {
+            newItem = self.handleItem(e.newValue);
+            removed = false;
+          } else {
+            newItem = null;
+            removed = true;
+          }
+
+          return {
+            key,
+            newItem,
+            oldItem,
+            removed,
+          } as EntryChangeEvent;
+        }),
+        bufferTime(0, asapScheduler),
+      )
+      .subscribe((events) => {
+        const self = thisRef.deref();
+        self.entriesChangeSubject.next(events);
+      });
   }
 }

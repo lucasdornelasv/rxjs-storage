@@ -5,8 +5,15 @@ import {
   IEntrySnapshot,
   IRxStorage,
 } from "./interfaces";
-import { Observable } from "rxjs";
-import { distinctUntilChanged, filter, map, startWith } from "rxjs/operators";
+import { from, Observable } from "rxjs";
+import {
+  distinctUntilChanged,
+  filter,
+  map,
+  mergeMap,
+  share,
+  startWith,
+} from "rxjs/operators";
 import {
   handleFilter,
   handleKeyOrKeys,
@@ -91,9 +98,19 @@ export abstract class RxAbstractStorage implements IRxStorage {
     this.prefix = prefix ?? "";
   }
 
-  abstract watch<T = any>(
+  abstract watchBulk<T = any>(
     keyOrKeys?: string | string[],
-  ): Observable<EntryChangeEvent<T>>;
+  ): Observable<ReadonlyArray<EntryChangeEvent<T>>>;
+
+  watch<T = any>(
+    keyOrKeys?: string | string[],
+  ): Observable<EntryChangeEvent<T>> {
+    return this.watchBulk(keyOrKeys).pipe(
+      mergeMap((events) => {
+        return from(events);
+      }),
+    );
+  }
 
   onItemChanged<T = any>(
     keyOrKeys?: string | string[],
@@ -204,16 +221,19 @@ class RxScopeStorage extends RxAbstractStorage {
     super(prefix);
   }
 
-  watch<T = any>(
+  watchBulk<T = any>(
     keyOrKeys?: string | string[],
-  ): Observable<EntryChangeEvent<T>> {
+  ): Observable<ReadonlyArray<EntryChangeEvent<T>>> {
     const { prefix } = this;
     keyOrKeys = handleKeyOrKeys(prefix, keyOrKeys);
 
-    let observable = this.source.watch<T>(keyOrKeys);
+    let observable = this.source.watchBulk<T>(keyOrKeys);
 
     if (!keyOrKeys) {
-      observable = observable.pipe(filter((x) => hasPrefix(prefix, x.key)));
+      observable = observable.pipe(
+        map((events) => events.filter((x) => hasPrefix(prefix, x.key))),
+        filter((events) => events.length > 0),
+      );
     }
 
     return observable;
