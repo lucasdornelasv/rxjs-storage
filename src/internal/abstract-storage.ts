@@ -96,7 +96,7 @@ export abstract class RxAbstractStorage implements IRxStorage {
   }
 
   constructor(prefix?: string) {
-    this.prefix = prefix ?? "";
+    this.prefix = prefix;
   }
 
   abstract watchBulk<T = any>(
@@ -226,9 +226,9 @@ class RxScopeStorage extends RxAbstractStorage {
 
   constructor(
     private source: IRxStorage,
-    prefix?: string,
+    prefix: string,
   ) {
-    super(prefix);
+    super(prefix ?? "");
   }
 
   watchBulk<T = any>(

@@ -34,13 +34,21 @@ export function handleKeyOrKeys(prefix: string, keyOrKeys?: string | string[]) {
 }
 
 export function insertPrefix(prefix: string, key: string): string {
-  return (prefix ?? "") + "." + key;
+  return resolvePrefix(prefix) + key;
 }
 
 export function removePrefix(prefix: string, key: string): string {
-  return key.slice(((prefix ?? "") + ".").length);
+  return key.slice(resolvePrefix(prefix).length);
 }
 
 export function hasPrefix(prefix: string, key: string): boolean {
-  return key?.startsWith((prefix ?? "") + ".") ?? false;
+  return key?.startsWith(resolvePrefix(prefix)) ?? false;
+}
+
+function resolvePrefix(prefix?: string) {
+  if(typeof prefix === 'string'){
+    return prefix + '.'
+  }
+
+  return ''
 }

@@ -1,12 +1,15 @@
 {
   "name": "@rxjs-storage/core",
-  "version": "1.2.2",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/lucasdornelasv/rxjs-storage"
-  },
+  "version": "1.2.3",
+  "repository": "git+https://github.com/lucasdornelasv/rxjs-storage.git",
   "author": "Lucas Dornelas",
   "license": "MIT",
+  "keywords": [
+    "js",
+    "rxjs",
+    "storage",
+    "core"
+  ],
   "files": [
     "dist",
     "dist/esm",
